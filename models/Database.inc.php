@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once("models/Survey.inc.php");
 require_once("models/Response.inc.php");
 
@@ -11,16 +11,38 @@ class Database {
 	 * est créée à l'aide de la méthode createDataBase().
 	 */
 	public function __construct() {
+		try {
+			$this->connection = new PDO("sqlite:database.sqlite");
+		} catch (Exception $e) {
+			die("Error : " . $e->getMessage());
+		}
 
-
-		$this->connection = new PDO("sqlite:database.sqlite");
 		if (!$this->connection) die("impossible d'ouvrir la base de données");
 
-		$q = $this->connection->query('SELECT name FROM sqlite_master WHERE type="table"');
+		$q = $this->connection->query('SELECT name FROM sqlite.main WHERE type="table"');
+		$connection = $q->fetchAll(PDO::FETCH_ASSOC);
 
-		if (count($q->fetchAll())==0) {
+$u = $this->connection->query('SELECT * FROM users');
+$result = $u->fetchAll(PDO::FETCH_ASSOC);
+var_dump($result);
+		if (count($connection)===0) {
+
 			$this->createDataBase();
 		}
+
+		/**$this->connection = new PDO("sqlite:database.sqlite");
+		if (!$this->connection) die("impossible d'ouvrir la base de données");
+
+		$q = $this->connection->query('SELECT name FROM `sqlite_master` WHERE type="table"');
+		$q->fetchAll();
+		var_dump($this->connection);die;
+		if (count($q->fetchAll())==0) {
+
+			$this->createDataBase();
+		}**/
+
+
+
 	}
 
 
@@ -51,11 +73,10 @@ class Database {
 	private function checkNicknameValidity($nickname) {
 
 		if(!(is_string($nickname) && strlen($nickname) > 2 && strlen($nickname) < 11)){
-			 $error = 1;
-		} else {
-			return  true;
+			 return 1;
 		}
-		return $error;
+
+		return  0;
 	}
 
 	/**
@@ -67,11 +88,10 @@ class Database {
 	 */
 	private function checkPasswordValidity($password) {
 		if (strlen($password) > 2 && strlen($password) < 11) {
-			return true;
+			return 0;
 		}
 
-		$error = 2;
-		return $error;
+		return 2;
 	}
 
 	/**
@@ -81,14 +101,17 @@ class Database {
 	 * @return boolean True si le pseudonyme est disponible, false sinon.
 	 */
 	private function checkNicknameAvailability($nickname) {
-		$q = $this->connection->query('SELECT * FROM users WHERE nickname = $nickname');
-		if(!(count($q->fetchAll()) === 0)) {
-			$error = 3;
-		} else {
-			return true;
+$query = "SELECT * FROM users WHERE nickname=$nickname";
+		$q = $this->connection->query($query);
+		$result = $q->fetchAll();
+		if ($result !== 0) {
+
+			return 3;
 		}
 
-		return $error;
+		return 0;
+
+
 	}
 
 	/**
@@ -98,51 +121,56 @@ class Database {
 	 * @param string $password Mot de passe.
 	 * @return boolean True si le couple est correct, false sinon.
 	 */
-	public function checkPassword($nickname, $password) {
-		$q = $this->connection->query('SELECT * FROM users WHERE nickname = $nickname AND password = $password');
+	public function checkPassword($nickname, $password): bool
+	{
+		$connection = $this->connection;
+$query="SELECT * FROM users WHERE nickname='$nickname'";
+		$q = $connection->query($query);
+		$result = $q->fetchAll(PDO::FETCH_ASSOC);
 
-		return count($q->fetchAll()) !== 0;
+
+		var_dump($result);
+		return $result->nickname === $nickname && $response->password === $password;
 
 	}
 
 	/**
 	 * Ajoute un nouveau compte utilisateur si le pseudonyme est valide et disponible et
 	 * si le mot de passe est valide. La méthode peut retourner un des messages d'erreur qui suivent :
-	 * - "Le pseudo doit contenir entre 3 et 10 lettres.";
-	 * - "Le mot de passe doit contenir entre 3 et 10 caractères.";
+	 * - "Le pseudo doit contenir entre 3 et 10 lettres."
+	 * - "Le mot de passe doit contenir entre 3 et 10 caractères."
 	 * - "Le pseudo existe déjà.".
 	 *
 	 * @param string $nickname Pseudonyme.
 	 * @param string $password Mot de passe.
 	 * @return boolean|string True si le couple a été ajouté avec succès, un message d'erreur sinon.
 	 */
-	public function addUser($nickname, $password) {
-		$error = 0;
-		$this->checkNicknameValidity($nickname);
-		$this->checkNicknameAvailability($nickname);
+	public function addUser($nickname, $password): bool|string
+	{
 
-		$this->checkPasswordValidity($password);
+		$error = $this->checkNicknameValidity($nickname);
 
+		if ($error === 0) {
+			$error = $this->checkNicknameAvailability($nickname);
+		}
 
-
-
-
-
-
+		if ($error === 0) {
+			$error = $this->checkPasswordValidity($password);
+		}
 
 		if($error !== 0) {
-			$message = match ($error) {
+			return match ($error) {
 				1 => "Le mot de passe doit contenir entre 3 et 10 lettres.",
 				2 => "Le pseudo doit contenir entre 3 et 10 lettres.",
 				3 => "Le pseudo n'est pas disponible"
 			};
 		}
 
+		$query = "INSERT INTO users (nickname, password) VALUES ('$nickname', '$password')";
+		$this->connection->query($query);
 
+		return "Votre compte à bien été crée, welcome";
 
-		$this->connection->query(shell_exec("INSERT INTO users (nickname, password) VALUES (\$nickname, \$password)"));
-		$message = 'Votre compte à bien été crée, welcome';
-		return $message;
 	}
 
 	/**

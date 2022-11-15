@@ -17,13 +17,14 @@ function getAction() {
 	if (!isset($_REQUEST['action'])) $action = 'Default';
 	else $action = $_REQUEST['action'];
 
-	$actions = array('Default',
-			'Logout',
-			'Login',
-
-			'SignUpForm',
+	$actions = array(
+		'Default',
+		'Logout',
+		'Login',
+		'SignUp',
+		'SignUpForm',
 /*
-'SignUp',
+
 			'UpdateUserForm',
 			'UpdateUser',
 			'AddSurveyForm',
